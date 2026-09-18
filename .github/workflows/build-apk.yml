@@ -10,30 +10,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: कोड क्लोन करें (Checkout Repository)
+      - name: कोड चेकआउट करें
         uses: actions/checkout@v4
 
-      - name: जावा सेटअप करें (Setup Java JDK)
+      - name: जावा १७ सेटअप करें
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: 'temurin'
           java-version: '17'
+          cache: 'gradle'
 
-      - name: फ्लटर सेटअप करें (Setup Flutter)
+      - name: फ्लटर सेटअप करें
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.x'
+          flutter-version: '3.24.x'
           channel: 'stable'
+          cache: true
 
-      - name: जरूरी पैकेज डाउनलोड करें
+      - name: एंड्रॉयड लाइसेंस स्वीकार करें
+        run: yes | flutter doctor --android-licenses || true
+
+      - name: निर्भरताएं डाउनलोड करें
         run: flutter pub get
 
-      - name: रिलीज एपीके बनाएं (Build APK)
-        run: flutter build apk --split-per-abi
+      - name: रिलीज एपीके बनाएं
+        run: flutter build apk --release --no-tree-shake-icons
 
-      - name: एपीके अपलोड करें (Upload APK Artifact)
+      - name: एपीके फाइल अपलोड करें
         uses: actions/upload-artifact@v4
         with:
-          name: Shiv-AI-Editor-APK
-          path: build/app/outputs/flutter-apk/*.apk
-          
+          name: Shiv-AI-Pro-Editor-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
