@@ -1,0 +1,39 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: कोड क्लोन करें (Checkout Repository)
+        uses: actions/checkout@v4
+
+      - name: जावा सेटअप करें (Setup Java JDK)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: फ्लटर सेटअप करें (Setup Flutter)
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.x'
+          channel: 'stable'
+
+      - name: जरूरी पैकेज डाउनलोड करें
+        run: flutter pub get
+
+      - name: रिलीज एपीके बनाएं (Build APK)
+        run: flutter build apk --split-per-abi
+
+      - name: एपीके अपलोड करें (Upload APK Artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Shiv-AI-Editor-APK
+          path: build/app/outputs/flutter-apk/*.apk
+          
