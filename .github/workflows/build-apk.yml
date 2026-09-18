@@ -30,12 +30,12 @@ jobs:
       - name: पैकेज डाउनलोड करें
         run: flutter pub get
 
-      - name: एपीके बिल्ड करें
-        run: flutter build apk --release --no-tree-shake-icons
+      - name: सेल्फ-साइन्ड एपीके बिल्ड करें
+        run: flutter build apk --debug
 
       - name: तैयार एपीके अपलोड करें
         uses: actions/upload-artifact@v4
         with:
           name: Shiv-AI-Pro-Editor-APK
-          path: build/app/outputs/flutter-apk/*.apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
           
