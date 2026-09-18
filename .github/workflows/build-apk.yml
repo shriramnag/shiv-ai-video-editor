@@ -24,18 +24,18 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: मिसिंग एंड्रॉयड फाइल्स जनरेट करें
-        run: flutter create . --platforms=android --org com.shivai.editor
+      - name: एकदम नई फ्रेश पैकेज आईडी के साथ एंड्रॉयड बनाएं
+        run: flutter create . --platforms=android --org com.shivai.app --project-name shiv_pro_editor
 
       - name: पैकेज डाउनलोड करें
         run: flutter pub get
 
-      - name: सेल्फ-साइन्ड एपीके बिल्ड करें
+      - name: मोबाइल के लिए फ्रेश एपीके बनाएं
         run: flutter build apk --debug
 
       - name: तैयार एपीके अपलोड करें
         uses: actions/upload-artifact@v4
         with:
-          name: Shiv-AI-Pro-Editor-APK
+          name: Shiv-Pro-Editor-APK
           path: build/app/outputs/flutter-apk/app-debug.apk
           
