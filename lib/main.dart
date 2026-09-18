@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:video_player/video_player.dart';
 
 void main() {
   runApp(const ShivAIApp());
@@ -13,8 +16,8 @@ class ShivAIApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'शिव एआई वीडियो एडिटर',
       theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF121212),
-        cardColor: const Color(0xFF1E1E1E),
+        scaffoldBackgroundColor: const Color(0xFF0F0F12),
+        cardColor: const Color(0xFF18181D),
         colorScheme: const ColorScheme.dark(
           primary: Color(0xFF00ADB5),
           secondary: Color(0xFFFF5722),
@@ -33,176 +36,261 @@ class MainEditorScreen extends StatefulWidget {
 }
 
 class _MainEditorScreenState extends State<MainEditorScreen> {
-  String currentStatus = "तैयार (Ready)";
-  String selectedVideo = "सैंपल_वीडियो.mp4";
+  VideoPlayerController? _controller;
+  final ImagePicker _picker = ImagePicker();
+  String videoName = "कोई वीडियो लोड नहीं है";
+  String activeCaption = "वायरल कैप्शन यहाँ दिखेगा";
+  bool isPlaying = false;
 
-  void showMessage(String title, String msg) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(msg),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("ठीक है"))
-        ],
+  // फोन गैलरी से असली वीडियो चुनना
+  Future<void> pickVideo() async {
+    final XFile? file = await _picker.pickVideo(source: ImageSource.gallery);
+    if (file != null) {
+      _controller?.dispose();
+      _controller = VideoPlayerController.file(File(file.path))
+        ..initialize().then((_) {
+          setState(() {
+            videoName = file.name;
+            _controller!.play();
+            isPlaying = true;
+          });
+        });
+    }
+  }
+
+  void togglePlayPause() {
+    if (_controller != null && _controller!.value.isInitialized) {
+      setState(() {
+        if (_controller!.value.isPlaying) {
+          _controller!.pause();
+          isPlaying = false;
+        } else {
+          _controller!.play();
+          isPlaying = true;
+        }
+      });
+    } else {
+      pickVideo();
+    }
+  }
+
+  void showActionAlert(String title, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("$title: $message"),
+        backgroundColor: const Color(0xFF00ADB5),
+        duration: const Duration(seconds: 2),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("शिव एआई प्रो एडिटर (FOSS)", style: TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: true,
+        backgroundColor: const Color(0xFF18181D),
+        elevation: 0,
+        title: Text(videoName, style: const TextStyle(fontSize: 14, color: Colors.white70)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.download, color: Color(0xFF00ADB5)),
-            onPressed: () => showMessage("एक्सपोर्ट", "वीडियो एक्सपोर्ट इंजन प्रारंभ हो रहा है..."),
+            icon: const Icon(Icons.video_library, color: Color(0xFF00ADB5)),
+            tooltip: "वीडियो चुनें",
+            onPressed: pickVideo,
+          ),
+          IconButton(
+            icon: const Icon(Icons.file_upload_outlined, color: Colors.white),
+            tooltip: "एक्सपोर्ट",
+            onPressed: () => showActionAlert("एक्सपोर्ट", "फास्ट रेंडरिंग प्रारंभ हो गई"),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // प्रीव्यू विंडो
-            Container(
-              height: 220,
-              width: double.infinity,
+      body: Column(
+        children: [
+          // १. वीडियो प्रीव्यू प्लेयर विंडो (इमेज जैसा)
+          Expanded(
+            flex: 4,
+            child: Container(
+              margin: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.black,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white24),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white12),
               ),
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  const Icon(Icons.play_circle_fill, size: 64, color: Colors.white70),
-                  Positioned(
-                    top: 10,
-                    left: 10,
-                    child: Text(selectedVideo, style: const TextStyle(color: Colors.white60, fontSize: 12)),
-                  ),
-                  Positioned(
-                    bottom: 15,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.shade700,
-                        borderRadius: BorderRadius.circular(4),
+                  if (_controller != null && _controller!.value.isInitialized)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: AspectRatio(
+                        aspectRatio: _controller!.value.aspectRatio,
+                        child: VideoPlayer(_controller!),
                       ),
-                      child: const Text("🔥 वायरल कैप्शन: ये पहाड़ शानदार हैं!", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                    )
+                  else
+                    InkWell(
+                      onTap: pickVideo,
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_circle_outline, size: 55, color: Color(0xFF00ADB5)),
+                          SizedBox(height: 8),
+                          Text("गैलरी से वीडियो चुनें", style: TextStyle(color: Colors.white70, fontSize: 14)),
+                        ],
+                      ),
+                    ),
+
+                  // वीडियो के ऊपर प्ले/पॉज बटन
+                  if (_controller != null && _controller!.value.isInitialized)
+                    IconButton(
+                      iconSize: 50,
+                      icon: Icon(
+                        isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                        color: Colors.white.withOpacity(0.7),
+                      ),
+                      onPressed: togglePlayPause,
+                    ),
+
+                  // इमेज जैसा वायरल कैप्शन बॉक्स
+                  Positioned(
+                    bottom: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade600,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        activeCaption,
+                        style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 15),
+          ),
 
-            // टाइमलाइन स्थिति
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E1E1E),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
+          // २. टाइमलाइन और वेवफॉर्म एरिया (केपकट / इनशॉट स्टाइल)
+          Expanded(
+            flex: 2,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: const Color(0xFF141418),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.tune, color: Color(0xFF00ADB5)),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text("स्टेटस: $currentStatus", style: const TextStyle(fontSize: 13))),
+                  // वीडियो प्रोग्रेस बार
+                  if (_controller != null && _controller!.value.isInitialized)
+                    VideoProgressIndicator(
+                      _controller!,
+                      allowScrubbing: true,
+                      colors: const VideoProgressColors(
+                        playedColor: Color(0xFF00ADB5),
+                        bufferedColor: Colors.white24,
+                        backgroundColor: Colors.black,
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+
+                  // टाइमलाइन लेयर्स (वीडियो, ऑडियो, टेक्स्ट)
+                  Expanded(
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        // वीडियो क्लिप बार
+                        Container(
+                          width: 140,
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.blueGrey.shade800,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFF00ADB5), width: 1.5),
+                          ),
+                          child: const Center(
+                            child: Text("📹 वीडियो क्लिप", style: TextStyle(fontSize: 12, color: Colors.white)),
+                          ),
+                        ),
+                        // ऑडियो ट्रैक बार
+                        Container(
+                          width: 120,
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.teal.shade900,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Center(
+                            child: Text("🎵 ऑडियो वेव", style: TextStyle(fontSize: 12, color: Colors.white70)),
+                          ),
+                        ),
+                        // टेक्स्ट लेयर बार
+                        Container(
+                          width: 100,
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade900,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Center(
+                            child: Text("📝 कैप्शन", style: TextStyle(fontSize: 12, color: Colors.white70)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+          ),
 
-            // सेक्शन १: ऑडियो टूल्स
-            const Text("१. ऑडियो और वोकल टूल्स (स्थानीय)", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
+          // ३. नीचे मुख्य टूल्स बार
+          Container(
+            height: 95,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            color: const Color(0xFF18181D),
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               children: [
-                ActionChip(
-                  avatar: const Icon(Icons.music_note, size: 18),
-                  label: const Text("ऑडियो अलग करें (MP3)"),
-                  onPressed: () => showMessage("ऑडियो", "वीडियो से ऑडियो अलग होकर सेव हो गया है।"),
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.mic_off, size: 18),
-                  label: const Text("बैकग्राउंड शोर हटाएं"),
-                  onPressed: () => showMessage("शोर रिमूवर", "ऑडियो नॉइज़ साफ कर दिया गया है।"),
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.graphic_eq, size: 18),
-                  label: const Text("बीट डिटेक्शन और सिंक"),
-                  onPressed: () => showMessage("बीट सिंक", "म्यूजिक बीट्स टाइमलाइन पर मार्क हो गए हैं।"),
-                ),
+                _buildToolButton(Icons.movie_creation_outlined, "वीडियो चुनें", pickVideo),
+                _buildToolButton(Icons.content_cut, "लॉसलैस कट", () => showActionAlert("कट", "क्लिप स्प्लिट हो गई")),
+                _buildToolButton(Icons.audiotrack, "ऑडियो अलग", () => showActionAlert("ऑडियो", "MP3 अलग निकाल लिया गया")),
+                _buildToolButton(Icons.subtitles, "ऑटो कैप्शन", () {
+                  setState(() => activeCaption = "🔥 लोकल व्हिस्पर: ऑडियो से कैप्शन तैयार!");
+                  showActionAlert("कैप्शन", "हिंदी कैप्शन टाइमलाइन पर जुड़ गया");
+                }),
+                _buildToolButton(Icons.speed, "स्पीड कर्व", () => showActionAlert("स्पीड", "कर्व स्मूथ मोशन लागू")),
+                _buildToolButton(Icons.auto_fix_high, "शोर हटाएं", () => showActionAlert("नॉइज़", "बैकग्राउंड आवाज़ साफ")),
+                _buildToolButton(Icons.crop_rotate, "9:16 रील्स", () => showActionAlert("फॉर्मेट", "शॉर्ट्स रेशियो सेट")),
               ],
             ),
-            const SizedBox(height: 20),
+          ),
+        ],
+      ),
+    );
+  }
 
-            // सेक्शन २: ऑटो कैप्शन और टेक्स्ट टेंप्लेट्स
-            const Text("२. ऑटो-कैप्शन और काइनेटिक स्टाइल्स", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                ActionChip(
-                  avatar: const Icon(Icons.subtitles, size: 18),
-                  label: const Text("लोकल व्हिस्पर कैप्शन (हिंदी)"),
-                  onPressed: () => showMessage("कैप्शन", "वीडियो की आवाज सुनकर हिंदी सबटाइटल जनरेट हो गए।"),
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.style, size: 18),
-                  label: const Text("होरमोजी बोल्ड येलो"),
-                  onPressed: () => showMessage("टेंप्लेट", "येलो बोल्ड कैप्शन स्टाइल लागू किया गया।"),
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.text_fields, size: 18),
-                  label: const Text("काइनेटिक टाइपराइटर"),
-                  onPressed: () => showMessage("एनिमेशन", "टाइपराइटर टेक्स्ट मोशन एक्टिवेट हो गया।"),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // सेक्शन ३: वीडियो कटिंग, इफेक्ट्स व यूट्यूब
-            const Text("३. इफेक्ट्स, कट्स और यूट्यूब टूल्स", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                ActionChip(
-                  avatar: const Icon(Icons.flash_on, size: 18),
-                  label: const Text("लॉसलैस क्विक-कट"),
-                  onPressed: () => showMessage("फास्ट कट", "बिना री-एन्कोडिंग के वीडियो कट तैयार है।"),
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.crop_portrait, size: 18),
-                  label: const Text("रील्स क्रॉप (9:16)"),
-                  onPressed: () => showMessage("रील्स", "वर्टिकल शॉर्ट्स लेआउट सेट हो गया।"),
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.speed, size: 18),
-                  label: const Text("स्पीड कर्व (स्लो-फास्ट)"),
-                  onPressed: () => showMessage("स्पीड", "कर्व स्पीड रैंपिंग लागू कर दी गई है।"),
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.auto_awesome, size: 18),
-                  label: const Text("लोकल बैकग्राउंड रिमूवल"),
-                  onPressed: () => showMessage("एआई रिमूवल", "मीडियापाइप से बैकग्राउंड हटा दिया गया।"),
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.list_alt, size: 18),
-                  label: const Text("यूट्यूब चैप्टर्स टाइमस्टैम्प्स"),
-                  onPressed: () => showMessage("टाइमस्टैम्प्स", "यूट्यूब डिस्क्रिप्शन के लिए टाइमस्टैम्प कॉपी हो गए!"),
-                ),
-              ],
+  Widget _buildToolButton(IconData icon, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: 75,
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: const Color(0xFF00ADB5), size: 24),
+            const SizedBox(height: 5),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 11, color: Colors.white),
             ),
           ],
         ),
@@ -210,3 +298,4 @@ class _MainEditorScreenState extends State<MainEditorScreen> {
     );
   }
 }
+
