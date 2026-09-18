@@ -13,31 +13,29 @@ jobs:
       - name: कोड चेकआउट करें
         uses: actions/checkout@v4
 
-      - name: जावा १७ सेटअप करें
+      - name: जावा १७ सेट करें
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: 'gradle'
 
       - name: फ्लटर सेटअप करें
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.x'
+          flutter-version: '3.24.3'
           channel: 'stable'
-          cache: true
 
-      - name: एंड्रॉयड लाइसेंस स्वीकार करें
-        run: yes | flutter doctor --android-licenses || true
+      - name: एंड्रॉयड एनवायरनमेंट ऑटो-जनरेट करें
+        run: flutter create --platforms=android .
 
-      - name: निर्भरताएं डाउनलोड करें
+      - name: डिपेंडेंसी डाउनलोड करें
         run: flutter pub get
 
       - name: रिलीज एपीके बनाएं
         run: flutter build apk --release --no-tree-shake-icons
 
-      - name: एपीके फाइल अपलोड करें
+      - name: तैयार एपीके अपलोड करें
         uses: actions/upload-artifact@v4
         with:
-          name: Shiv-AI-Pro-Editor-APK
+          name: Shiv-AI-Editor-APK
           path: build/app/outputs/flutter-apk/app-release.apk
